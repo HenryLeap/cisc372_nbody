@@ -10,6 +10,8 @@
 // represents the objects in the system.  Global variables
 vector3 *hVel, *d_hVel;
 vector3 *hPos, *d_hPos;
+vector3 **d_accels;
+vector3 *d_values;
 double *mass, *d_mass;
 
 //initHostMemory: Create storage for numObjects entities in our system
@@ -23,12 +25,21 @@ void initHostMemory(int numObjects)
 	mass = (double *)malloc(sizeof(double) * numObjects);
 }
 
+__global__ void initAccels(){
+	int i = blockIdx.x*blockDim.x+threadIdx.x;
+	if (i>=NUMENTITIES) return;
+	d_accels[i]=&d_values[i*NUMENTITIES];
+}
 void initDevMemory(int numObjects)
 {
 	cudaMalloc(&d_hVel, sizeof(vector3) * numObjects);
 	cudaMalloc(&d_hPos, sizeof(vector3) * numObjects);
 	cudaMalloc(&d_mass, sizeof(double) * numObjects);
+	cudaMalloc(&d_accels, sizeof(vector3*) * numObjects);
+	cudaMalloc(&d_values, sizeof(vector3) * numObjects * numObjects);
+	initAccels<<<numObjects/BLOCKSIZE+1,BLOCKSIZE>>>();
 }
+
 
 //freeHostMemory: Free storage allocated by a previous call to initHostMemory
 //Parameters: None
@@ -46,6 +57,8 @@ void freeDevMemory()
 	cudaFree(d_hVel);
 	cudaFree(d_hPos);
 	cudaFree(d_mass);
+	cudaFree(d_accels);
+	cudaFree(d_values);
 }
 
 //planetFill: Fill the first NUMPLANETS+1 entries of the entity arrays with an estimation
@@ -103,6 +116,12 @@ void printSystem(FILE* handle){
 	}
 }
 
+void cpyOver(int numObjects){
+	cudaMemcpy(d_hVel,hVel,sizeof(vector3) * numObjects, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_hPos,hPos,sizeof(vector3) * numObjects, cudaMemcpyHostToDevice);
+	cudaMemcpy(d_mass,mass,sizeof(double) * numObjects, cudaMemcpyHostToDevice);
+}
+
 int main(int argc, char **argv)
 {
 	clock_t t0=clock();
@@ -113,6 +132,8 @@ int main(int argc, char **argv)
 	planetFill();
 	initDevMemory(NUMENTITIES);
 	randomFill(NUMPLANETS + 1, NUMASTEROIDS);
+	cpyOver(NUMENTITIES);
+	
 	//now we have a system.
 	#ifdef DEBUG
 	printSystem(stdout);

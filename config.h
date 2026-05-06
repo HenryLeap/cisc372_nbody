@@ -17,5 +17,8 @@
 #define INTERVAL DAY
 //End Configurable
 
+//Cuda variables
+#define BLOCKSIZE 256
+
 #define NUMENTITIES (NUMPLANETS+NUMASTEROIDS+1)
 #endif
