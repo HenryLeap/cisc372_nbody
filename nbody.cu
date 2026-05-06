@@ -25,7 +25,7 @@ void initHostMemory(int numObjects)
 	mass = (double *)malloc(sizeof(double) * numObjects);
 }
 
-__global__ void initAccels(){
+__global__ void initAccels(vector3 ** d_accels, vector3 * d_values){
 	int i = blockIdx.x*blockDim.x+threadIdx.x;
 	if (i>=NUMENTITIES) return;
 	d_accels[i]=&d_values[i*NUMENTITIES];
@@ -37,7 +37,7 @@ void initDevMemory(int numObjects)
 	cudaMalloc(&d_mass, sizeof(double) * numObjects);
 	cudaMalloc(&d_accels, sizeof(vector3*) * numObjects);
 	cudaMalloc(&d_values, sizeof(vector3) * numObjects * numObjects);
-	initAccels<<<numObjects/BLOCKSIZE+1,BLOCKSIZE>>>();
+	initAccels<<<numObjects/BLOCKSIZE+1,BLOCKSIZE>>>(d_accels, d_values);
 }
 
 
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
 	initDevMemory(NUMENTITIES);
 	randomFill(NUMPLANETS + 1, NUMASTEROIDS);
 	cpyOver(NUMENTITIES);
-	
+
 	//now we have a system.
 	#ifdef DEBUG
 	printSystem(stdout);
