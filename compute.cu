@@ -19,9 +19,11 @@ __global__ void compute(
 	int j,k;
 	int i = blockIdx.x*blockDim.x+threadIdx.x;
 	int incr = blockDim.y, offset = threadIdx.y;
-	__shared__ vector3 theseRows[BLOCK_DIM_X][SAME_I_THREADS]; // must be declared up here?
+	// __shared__ vector3 theseRows[BLOCK_DIM_X][SAME_I_THREADS]; // must be declared up here?
 	vector3 accel_sum={0,0,0};
-	if(i>=NUMENTITIES) goto reduce;
+	// if(i>=NUMENTITIES) goto reduce;
+	// if(i>=NUMENTITIES) goto reduce;
+	if(i>=NUMENTITIES) goto pos;
 
 
 	for (j = offset; j < NUMENTITIES; j += incr){
@@ -40,27 +42,38 @@ __global__ void compute(
 		for (k=0;k<3;k++) accel_sum[k]+=accel[k];
 	}
 
-	reduce:
+	// reduce:
 	// __shared__ vector3 theseRows; // would be nice to declare down here
-	COPY_VECTOR(theseRows[blockIdx.x][offset], accel_sum);
-	for (int l = SAME_I_THREADS >> 1; l; l >>= 1) {
-	        __syncthreads();
-	        if (offset >= l) continue;
-	        ADD_VECTORS(
-	                theseRows[blockIdx.x][offset],
-	                theseRows[blockIdx.x][offset + l]
-	        );
-	}
-        __syncthreads();
+	// COPY_VECTOR(theseRows[blockIdx.x][offset], accel_sum);
+	// for (int l = SAME_I_THREADS >> 1; l; l >>= 1) {
+	//        __syncthreads();
+	//        if (offset >= l) continue;
+	//        ADD_VECTORS(
+	//                theseRows[blockIdx.x][offset],
+	//                theseRows[blockIdx.x][offset + l]
+	//        );
+	//}
+        // __syncthreads();
 
-	if(i >= NUMENTITIES || offset != 0) return;
+	// if(i >= NUMENTITIES || offset != 0) return;
 
-	COPY_VECTOR(accel_sum, theseRows[blockIdx.x][0]);
+        // for (int l = 1; l < SAME_I_THREADS; l++)
+        //         ADD_VECTORS(accel_sum, theseRows[blockIdx.x][l]);
+
+	// COPY_VECTOR(accel_sum, theseRows[blockIdx.x][0]);
 
 	//compute the new velocity based on the acceleration and time interval
 	//compute the new position based on the velocity and time interval
 	for (k=0;k<3;k++){
-		d_hVel[i][k]+=accel_sum[k]*INTERVAL;
+		// d_hVel[i][k] =
+		atomicAdd(&d_hVel[i][k], accel_sum[k]*INTERVAL);
+		// d_hPos[i][k]+=d_hVel[i][k]*INTERVAL;
+	}
+	pos:
+	__syncthreads();
+	if(i >= NUMENTITIES || offset != 0) return;
+	for (k=0;k<3;k++){
+		// d_hVel[i][k]+=accel_sum[k]*INTERVAL;
 		d_hPos[i][k]+=d_hVel[i][k]*INTERVAL;
 	}
 }

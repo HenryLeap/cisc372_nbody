@@ -151,13 +151,6 @@ int main(int argc, char **argv)
 #ifdef DEBUG
 	printSystem(stdout);
 #endif
-
-        printf("pos=(");
-        for (int j=0;j<3;j++) printf("%lf,",hPos[NUMENTITIES-1][j]);
-        printf("),v=(");
-        for (int j=0;j<3;j++) printf("%lf,",hVel[NUMENTITIES-1][j]);
-        printf("),m=%lf\n",mass[NUMENTITIES-1]);
-
 	printf("This took a total time of %f seconds\n",(double)t1/CLOCKS_PER_SEC);
 
 	freeHostMemory();
