@@ -18,11 +18,13 @@ __global__ void compute(
 ){
 	int j,k;
 	int i = blockIdx.x*blockDim.x+threadIdx.x;
-	if(i>=NUMENTITIES)return;
-
+	int incr = blockDim.y, offset = threadIdx.y;
+	__shared__ vector3 theseRows[BLOCK_DIM_X][SAME_I_THREADS]; // must be declared up here?
 	vector3 accel_sum={0,0,0};
+	if(i>=NUMENTITIES) goto reduce;
 
-	for (j=0;j<NUMENTITIES;j++){
+
+	for (j = offset; j < NUMENTITIES; j += incr){
 	        vector3 accel;
 		if (i==j) {
 			FILL_VECTOR(accel,0,0,0);
@@ -37,6 +39,23 @@ __global__ void compute(
 		}
 		for (k=0;k<3;k++) accel_sum[k]+=accel[k];
 	}
+
+	reduce:
+	// __shared__ vector3 theseRows; // would be nice to declare down here
+	COPY_VECTOR(theseRows[blockIdx.x][offset], accel_sum);
+	for (int l = SAME_I_THREADS >> 1; l; l >>= 1) {
+	        __syncthreads();
+	        if (offset >= l) continue;
+	        ADD_VECTORS(
+	                theseRows[blockIdx.x][offset],
+	                theseRows[blockIdx.x][offset + l]
+	        );
+	}
+        __syncthreads();
+
+	if(i >= NUMENTITIES || offset != 0) return;
+
+	COPY_VECTOR(accel_sum, theseRows[blockIdx.x][0]);
 
 	//compute the new velocity based on the acceleration and time interval
 	//compute the new position based on the velocity and time interval

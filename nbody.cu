@@ -136,9 +136,10 @@ int main(int argc, char **argv)
 	#ifdef DEBUG
 	printSystem(stdout);
 	#endif
+	dim3 threadsPerBlock(BLOCK_DIM_X, SAME_I_THREADS);
 	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){
-		compute<<<NUMENTITIES/BLOCKSIZE+1,BLOCKSIZE>>>(
-		        d_hVel, d_hPos, d_mass);
+		compute<<<GRIDSIZE,threadsPerBlock>>>(d_hVel, d_hPos, d_mass);
+		cudaDeviceSynchronize();
 		if (t_now % (100 * INTERVAL)) continue;
                 #ifdef DEBUG
                 fprintf(stderr, "%d/%d\t%.6f\n",t_now, DURATION, (float)t_now/DURATION);
@@ -150,6 +151,13 @@ int main(int argc, char **argv)
 #ifdef DEBUG
 	printSystem(stdout);
 #endif
+
+        printf("pos=(");
+        for (int j=0;j<3;j++) printf("%lf,",hPos[NUMENTITIES-1][j]);
+        printf("),v=(");
+        for (int j=0;j<3;j++) printf("%lf,",hVel[NUMENTITIES-1][j]);
+        printf("),m=%lf\n",mass[NUMENTITIES-1]);
+
 	printf("This took a total time of %f seconds\n",(double)t1/CLOCKS_PER_SEC);
 
 	freeHostMemory();

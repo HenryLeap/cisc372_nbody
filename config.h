@@ -21,8 +21,12 @@ Parallelised by Samhain Ackerman and Henry Leap
 #define INTERVAL DAY
 //End Configurable
 
+#define NUMENTITIES (NUMPLANETS+NUMASTEROIDS+1)
+
 //Cuda variables
 #define BLOCKSIZE 256
+#define SAME_I_THREADS 16
+#define BLOCK_DIM_X (BLOCKSIZE / SAME_I_THREADS)
+#define GRIDSIZE (NUMENTITIES/BLOCK_DIM_X+1)
 
-#define NUMENTITIES (NUMPLANETS+NUMASTEROIDS+1)
 #endif
