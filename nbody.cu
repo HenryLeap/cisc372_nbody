@@ -1,3 +1,7 @@
+/*
+Parallelised by Samhain Ackerman and Henry Leap
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>

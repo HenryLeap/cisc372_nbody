@@ -1,3 +1,7 @@
+/*
+Parallelised by Samhain Ackerman and Henry Leap
+*/
+
 #ifndef __DEBUG_H__
 #define __DEBUG_H__
 

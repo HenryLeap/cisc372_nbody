@@ -1,3 +1,5 @@
+# Parallelised by Samhain Ackerman and Henry Leap
+
 FLAGS= -DDEBUG
 LOCAL=
 LIBS= -lm

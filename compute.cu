@@ -1,3 +1,7 @@
+/*
+Parallelised by Samhain Ackerman and Henry Leap
+*/
+
 #include <stdlib.h>
 #include <math.h>
 #include "vector.h"
