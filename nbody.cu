@@ -149,7 +149,8 @@ int main(int argc, char **argv)
 	printSystem(stdout);
 	#endif
 	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){
-		compute();
+		compute<<<NUMENTITIES/BLOCKSIZE+1,BLOCKSIZE>>>(
+		        d_hVel, d_hPos, d_mass, d_accels);
 		if (t_now % (100 * INTERVAL)) continue;
                 #ifdef DEBUG
                 fprintf(stderr, "%d/%d\t%.6f\n",t_now, DURATION, (float)t_now/DURATION);

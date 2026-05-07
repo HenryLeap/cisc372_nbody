@@ -7,10 +7,14 @@ Parallelised by Samhain Ackerman and Henry Leap
 #include "vector.h"
 #include "config.h"
 
-__global__ void computeAccel(vector3 ** d_accels, vector3 * d_hPos, double * d_mass){
+__device__ void computeAccel(
+        int i,
+        vector3 * d_hVel,
+        vector3 * d_hPos,
+        double * d_mass,
+        vector3 ** d_accels
+) {
 	int j,k;
-	int i = blockIdx.x*blockDim.x+threadIdx.x;
-	if(i>=NUMENTITIES)return;
 	for (j=0;j<NUMENTITIES;j++){
 		if (i==j) {
 			FILL_VECTOR(d_accels[i][j],0,0,0);
@@ -26,10 +30,14 @@ __global__ void computeAccel(vector3 ** d_accels, vector3 * d_hPos, double * d_m
 	}
 }
 
-__global__ void sumAccel(vector3 * d_hVel, vector3 * d_hPos, vector3 ** d_accels){
+__device__ void sumAccel(
+        int i,
+        vector3 * d_hVel,
+        vector3 * d_hPos,
+        double * d_mass,
+        vector3 ** d_accels
+) {
 	int j,k;
-	int i = blockIdx.x*blockDim.x+threadIdx.x;
-	if(i>=NUMENTITIES)return;
 
 	//copied from second for loop in compute
 	vector3 accel_sum={0,0,0};
@@ -50,7 +58,14 @@ __global__ void sumAccel(vector3 * d_hVel, vector3 * d_hPos, vector3 ** d_accels
 //Parameters: None
 //Returns: None
 //Side Effect: Modifies the hPos and hVel arrays with the new positions and accelerations after 1 INTERVAL
-void compute(){
+__global__ void compute(
+        vector3 * d_hVel,
+        vector3 * d_hPos,
+        double * d_mass,
+        vector3 ** d_accels
+){
+	int i = blockIdx.x*blockDim.x+threadIdx.x;
+	if(i>=NUMENTITIES)return;
 	//make an acceleration matrix which is NUMENTITIES squared in size;
 
 	//vector3* values=(vector3*)malloc(sizeof(vector3)*NUMENTITIES*NUMENTITIES);
@@ -62,7 +77,7 @@ void compute(){
 	//first compute the pairwise accelerations.  Effect is on the first argument.
 	//for loop for computing accelerations, which are then stored in the values array
 	//IN THEORY: start a kernel with i threads and compute and sum up the elements of the row there
-	computeAccel<<<NUMENTITIES/BLOCKSIZE+1,BLOCKSIZE>>>(d_accels, d_hPos, d_mass);
+	computeAccel(i, d_hVel, d_hPos, d_mass, d_accels);
 
 	/*for (i=0;i<NUMENTITIES;i++){
 		//kernel needed on this outer for loop
@@ -82,7 +97,7 @@ void compute(){
 		}
 	}*/
 	//sum up the rows of our matrix to get effect on each entity, then update velocity and position.
-	sumAccel<<<NUMENTITIES/BLOCKSIZE+1,BLOCKSIZE>>>(d_hVel, d_hPos, d_accels);
+	sumAccel(i, d_hVel, d_hPos, d_mass, d_accels);
 	//for (i=0;i<NUMENTITIES;i++){
 		//kernel needed on this outer for loop
 		// vector3 accel_sum={0,0,0};
