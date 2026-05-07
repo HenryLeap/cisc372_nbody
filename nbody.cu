@@ -6,6 +6,7 @@
 #include "config.h"
 #include "planets.h"
 #include "compute.h"
+#include "debug.h"
 
 // represents the objects in the system.  Global variables
 vector3 *hVel, *d_hVel;
@@ -32,11 +33,11 @@ __global__ void initAccels(vector3 ** d_accels, vector3 * d_values){
 }
 void initDevMemory(int numObjects)
 {
-	cudaMalloc(&d_hVel, sizeof(vector3) * numObjects);
-	cudaMalloc(&d_hPos, sizeof(vector3) * numObjects);
-	cudaMalloc(&d_mass, sizeof(double) * numObjects);
-	cudaMalloc(&d_accels, sizeof(vector3*) * numObjects);
-	cudaMalloc(&d_values, sizeof(vector3) * numObjects * numObjects);
+	HANDLE_ERROR(cudaMalloc(&d_hVel, sizeof(vector3) * numObjects));
+	HANDLE_ERROR(cudaMalloc(&d_hPos, sizeof(vector3) * numObjects));
+	HANDLE_ERROR(cudaMalloc(&d_mass, sizeof(double) * numObjects));
+	HANDLE_ERROR(cudaMalloc(&d_accels, sizeof(vector3*) * numObjects));
+	HANDLE_ERROR(cudaMalloc(&d_values, sizeof(vector3) * numObjects * numObjects));
 	initAccels<<<numObjects/BLOCKSIZE+1,BLOCKSIZE>>>(d_accels, d_values);
 }
 
@@ -54,11 +55,11 @@ void freeHostMemory()
 
 void freeDevMemory()
 {
-	cudaFree(d_hVel);
-	cudaFree(d_hPos);
-	cudaFree(d_mass);
-	cudaFree(d_accels);
-	cudaFree(d_values);
+	HANDLE_ERROR(cudaFree(d_hVel));
+	HANDLE_ERROR(cudaFree(d_hPos));
+	HANDLE_ERROR(cudaFree(d_mass));
+	HANDLE_ERROR(cudaFree(d_accels));
+	HANDLE_ERROR(cudaFree(d_values));
 }
 
 //planetFill: Fill the first NUMPLANETS+1 entries of the entity arrays with an estimation
@@ -117,9 +118,9 @@ void printSystem(FILE* handle){
 }
 
 void cpyOver(int numObjects){
-	cudaMemcpy(d_hVel,hVel,sizeof(vector3) * numObjects, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_hPos,hPos,sizeof(vector3) * numObjects, cudaMemcpyHostToDevice);
-	cudaMemcpy(d_mass,mass,sizeof(double) * numObjects, cudaMemcpyHostToDevice);
+	HANDLE_ERROR(cudaMemcpy(d_hVel,hVel,sizeof(vector3) * numObjects, cudaMemcpyHostToDevice));
+	HANDLE_ERROR(cudaMemcpy(d_hPos,hPos,sizeof(vector3) * numObjects, cudaMemcpyHostToDevice));
+	HANDLE_ERROR(cudaMemcpy(d_mass,mass,sizeof(double) * numObjects, cudaMemcpyHostToDevice));
 }
 
 int main(int argc, char **argv)
@@ -140,6 +141,9 @@ int main(int argc, char **argv)
 	#endif
 	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){
 		compute();
+                #ifdef DEBUG
+                fprintf(stderr, "%d/%d\t%.6f\n",t_now, DURATION, (float)t_now/DURATION);
+                #endif
 	}
 	clock_t t1=clock()-t0;
 #ifdef DEBUG
