@@ -123,6 +123,11 @@ void cpyOver(int numObjects){
 	HANDLE_ERROR(cudaMemcpy(d_mass,mass,sizeof(double) * numObjects, cudaMemcpyHostToDevice));
 }
 
+void cpyBack(int numObjects){
+	HANDLE_ERROR(cudaMemcpy(hVel,d_hVel,sizeof(vector3) * numObjects, cudaMemcpyDeviceToHost));
+	HANDLE_ERROR(cudaMemcpy(hPos,d_hPos,sizeof(vector3) * numObjects, cudaMemcpyDeviceToHost));
+}
+
 int main(int argc, char **argv)
 {
 	clock_t t0=clock();
@@ -145,6 +150,8 @@ int main(int argc, char **argv)
                 fprintf(stderr, "%d/%d\t%.6f\n",t_now, DURATION, (float)t_now/DURATION);
                 #endif
 	}
+	cpyBack(NUMENTITIES);
+
 	clock_t t1=clock()-t0;
 #ifdef DEBUG
 	printSystem(stdout);

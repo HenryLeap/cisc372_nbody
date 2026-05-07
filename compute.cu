@@ -2,12 +2,6 @@
 #include <math.h>
 #include "vector.h"
 #include "config.h"
-#include "debug.h"
-
-void cpyBack(){
-	HANDLE_ERROR(cudaMemcpy(hVel,d_hVel,sizeof(vector3) * NUMENTITIES, cudaMemcpyDeviceToHost));
-	HANDLE_ERROR(cudaMemcpy(hPos,d_hPos,sizeof(vector3) * NUMENTITIES, cudaMemcpyDeviceToHost));
-}
 
 __global__ void computeAccel(vector3 ** d_accels, vector3 * d_hPos, double * d_mass){
 	int j,k;
@@ -102,5 +96,4 @@ void compute(){
 	//}
 	// free(accels);
 	// free(values);
-	cpyBack();
 }
