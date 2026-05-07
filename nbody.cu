@@ -15,8 +15,6 @@ Parallelised by Samhain Ackerman and Henry Leap
 // represents the objects in the system.  Global variables
 vector3 *hVel, *d_hVel;
 vector3 *hPos, *d_hPos;
-vector3 **d_accels;
-vector3 *d_values;
 double *mass, *d_mass;
 
 //initHostMemory: Create storage for numObjects entities in our system
@@ -30,19 +28,11 @@ void initHostMemory(int numObjects)
 	mass = (double *)malloc(sizeof(double) * numObjects);
 }
 
-__global__ void initAccels(vector3 ** d_accels, vector3 * d_values){
-	int i = blockIdx.x*blockDim.x+threadIdx.x;
-	if (i>=NUMENTITIES) return;
-	d_accels[i]=&d_values[i*NUMENTITIES];
-}
 void initDevMemory(int numObjects)
 {
 	HANDLE_ERROR(cudaMalloc(&d_hVel, sizeof(vector3) * numObjects));
 	HANDLE_ERROR(cudaMalloc(&d_hPos, sizeof(vector3) * numObjects));
 	HANDLE_ERROR(cudaMalloc(&d_mass, sizeof(double) * numObjects));
-	HANDLE_ERROR(cudaMalloc(&d_accels, sizeof(vector3*) * numObjects));
-	HANDLE_ERROR(cudaMalloc(&d_values, sizeof(vector3) * numObjects * numObjects));
-	initAccels<<<numObjects/BLOCKSIZE+1,BLOCKSIZE>>>(d_accels, d_values);
 }
 
 
@@ -62,8 +52,6 @@ void freeDevMemory()
 	HANDLE_ERROR(cudaFree(d_hVel));
 	HANDLE_ERROR(cudaFree(d_hPos));
 	HANDLE_ERROR(cudaFree(d_mass));
-	HANDLE_ERROR(cudaFree(d_accels));
-	HANDLE_ERROR(cudaFree(d_values));
 }
 
 //planetFill: Fill the first NUMPLANETS+1 entries of the entity arrays with an estimation
@@ -150,7 +138,7 @@ int main(int argc, char **argv)
 	#endif
 	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){
 		compute<<<NUMENTITIES/BLOCKSIZE+1,BLOCKSIZE>>>(
-		        d_hVel, d_hPos, d_mass, d_accels);
+		        d_hVel, d_hPos, d_mass);
 		if (t_now % (100 * INTERVAL)) continue;
                 #ifdef DEBUG
                 fprintf(stderr, "%d/%d\t%.6f\n",t_now, DURATION, (float)t_now/DURATION);
