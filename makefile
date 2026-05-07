@@ -1,4 +1,4 @@
-FLAGS= -DDEBUG
+FLAGS= -DDEBUG -arch=native
 LIBS= -lm
 ALWAYS_REBUILD=makefile
 
