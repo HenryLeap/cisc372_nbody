@@ -146,6 +146,7 @@ int main(int argc, char **argv)
 	#endif
 	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){
 		compute();
+		if (t_now % (100 * INTERVAL)) continue;
                 #ifdef DEBUG
                 fprintf(stderr, "%d/%d\t%.6f\n",t_now, DURATION, (float)t_now/DURATION);
                 #endif
