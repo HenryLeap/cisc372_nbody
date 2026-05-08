@@ -24,7 +24,7 @@ __device__ void reduce(vector3 accel_sum) {
 //Parameters: None
 //Returns: None
 //Side Effect: Modifies the hPos and hVel arrays with the new positions and accelerations after 1 INTERVAL
-__global__ void compute(
+__global__ void computeVel(
         vector3 * d_hVel,
         vector3 * d_hPos,
         double * d_mass
@@ -87,8 +87,23 @@ __global__ void compute(
 	//pos:
 	//__syncthreads();
 	//if(i >= NUMENTITIES || offset != 0) return;
-	for (k=0;k<3;k++){
+	for (k=0;k<3;k++)
 		d_hVel[i][k]+=accel_sum[k]*INTERVAL;
+
+}
+
+__global__ void updatePos(vector3 * d_hVel, vector3 * d_hPos) {
+	int k, i = blockIdx.x*blockDim.x+threadIdx.x;
+
+	if (i >= NUMENTITIES) return;
+
+	for (k=0;k<3;k++)
 		d_hPos[i][k]+=d_hVel[i][k]*INTERVAL;
-	}
+}
+
+void compute(vector3 * d_hVel, vector3 * d_hPos, double * d_mass) {
+	dim3 threadsPerBlock(IS_PER_BLOCK, THREADS_PER_I);
+        computeVel<<<GRIDSIZE,threadsPerBlock>>>(d_hVel, d_hPos, d_mass);
+        cudaDeviceSynchronize();
+        updatePos<<<GRIDSIZE,IS_PER_BLOCK>>>(d_hVel, d_hPos);
 }

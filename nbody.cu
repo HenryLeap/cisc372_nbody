@@ -136,10 +136,8 @@ int main(int argc, char **argv)
 	#ifdef DEBUG
 	printSystem(stdout);
 	#endif
-	dim3 threadsPerBlock(IS_PER_BLOCK, THREADS_PER_I);
 	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){
-		compute<<<GRIDSIZE,threadsPerBlock>>>(d_hVel, d_hPos, d_mass);
-		cudaDeviceSynchronize();
+                compute(d_hVel, d_hPos, d_mass);
 		if (t_now % (100 * INTERVAL)) continue;
                 #ifdef DEBUG
                 fprintf(stderr, "%d/%d\t%.6f\n",t_now, DURATION, (float)t_now/DURATION);
