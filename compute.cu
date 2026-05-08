@@ -7,6 +7,19 @@ Parallelised by Samhain Ackerman and Henry Leap
 #include "vector.h"
 #include "config.h"
 
+__device__ void reduce(vector3 accel_sum) {
+	int inBlockI = threadIdx.x;
+	int iSection = threadIdx.y;
+	__shared__ vector3 theseRows[IS_PER_BLOCK][THREADS_PER_I];
+        COPY_VECTOR(theseRows[inBlockI][iSection], accel_sum);
+        FILL_VECTOR(accel_sum, 0,0,0);
+        __syncthreads();
+        // ignore that we only need to do this for iSection == 0
+        if (iSection) return; // or don't
+        for (int j = 0; j < THREADS_PER_I; j++)
+                ADD_VECTORS(accel_sum, theseRows[inBlockI][j]);
+}
+
 //compute: Updates the positions and locations of the objects in the system based on gravity.
 //Parameters: None
 //Returns: None
@@ -19,11 +32,9 @@ __global__ void compute(
 	int j,k;
 	int i = blockIdx.x*blockDim.x+threadIdx.x;
 	int incr = blockDim.y, offset = threadIdx.y;
-	// __shared__ vector3 theseRows[BLOCK_DIM_X][SAME_I_THREADS]; // must be declared up here?
 	vector3 accel_sum={0,0,0};
-	// if(i>=NUMENTITIES) goto reduce;
-	// if(i>=NUMENTITIES) goto reduce;
-	if(i>=NUMENTITIES) goto pos;
+	if(i>=NUMENTITIES) goto reduce;
+	//if(i>=NUMENTITIES) goto pos;
 
 
 	for (j = offset; j < NUMENTITIES; j += incr){
@@ -42,7 +53,11 @@ __global__ void compute(
 		for (k=0;k<3;k++) accel_sum[k]+=accel[k];
 	}
 
-	// reduce:
+	reduce:
+
+	reduce(accel_sum);
+
+	if (i >= NUMENTITIES || offset) return;
 	// __shared__ vector3 theseRows; // would be nice to declare down here
 	// COPY_VECTOR(theseRows[blockIdx.x][offset], accel_sum);
 	// for (int l = SAME_I_THREADS >> 1; l; l >>= 1) {
@@ -58,22 +73,22 @@ __global__ void compute(
 	// if(i >= NUMENTITIES || offset != 0) return;
 
         // for (int l = 1; l < SAME_I_THREADS; l++)
-        //         ADD_VECTORS(accel_sum, theseRows[blockIdx.x][l]);
+        //        ADD_VECTORS(accel_sum, theseRows[blockIdx.x][l]);
 
 	// COPY_VECTOR(accel_sum, theseRows[blockIdx.x][0]);
 
 	//compute the new velocity based on the acceleration and time interval
 	//compute the new position based on the velocity and time interval
-	for (k=0;k<3;k++){
+	//for (k=0;k<3;k++){
 		// d_hVel[i][k] =
-		atomicAdd(&d_hVel[i][k], accel_sum[k]*INTERVAL);
+	//	atomicAdd(&d_hVel[i][k], accel_sum[k]*INTERVAL);
 		// d_hPos[i][k]+=d_hVel[i][k]*INTERVAL;
-	}
-	pos:
-	__syncthreads();
-	if(i >= NUMENTITIES || offset != 0) return;
+	//}
+	//pos:
+	//__syncthreads();
+	//if(i >= NUMENTITIES || offset != 0) return;
 	for (k=0;k<3;k++){
-		// d_hVel[i][k]+=accel_sum[k]*INTERVAL;
+		d_hVel[i][k]+=accel_sum[k]*INTERVAL;
 		d_hPos[i][k]+=d_hVel[i][k]*INTERVAL;
 	}
 }

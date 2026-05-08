@@ -136,7 +136,7 @@ int main(int argc, char **argv)
 	#ifdef DEBUG
 	printSystem(stdout);
 	#endif
-	dim3 threadsPerBlock(BLOCK_DIM_X, SAME_I_THREADS);
+	dim3 threadsPerBlock(IS_PER_BLOCK, THREADS_PER_I);
 	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){
 		compute<<<GRIDSIZE,threadsPerBlock>>>(d_hVel, d_hPos, d_mass);
 		cudaDeviceSynchronize();

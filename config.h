@@ -25,8 +25,8 @@ Parallelised by Samhain Ackerman and Henry Leap
 
 //Cuda variables
 #define BLOCKSIZE 256
-#define SAME_I_THREADS (1 << 2)
-#define BLOCK_DIM_X (BLOCKSIZE / SAME_I_THREADS)
-#define GRIDSIZE (NUMENTITIES/BLOCK_DIM_X+1)
+#define THREADS_PER_I (1 << 4)
+#define IS_PER_BLOCK (BLOCKSIZE / THREADS_PER_I)
+#define GRIDSIZE (NUMENTITIES/IS_PER_BLOCK+1)
 
 #endif
