@@ -8,6 +8,7 @@ Parallelised by Samhain Ackerman and Henry Leap
 #include "config.h"
 
 __device__ void reduce(vector3 accel_sum) {
+/*
 	// int inBlockI = threadIdx.x;
 	int offset = threadIdx.x;
 	__shared__ vector3 theseRows[BLOCKSIZE];
@@ -18,6 +19,13 @@ __device__ void reduce(vector3 accel_sum) {
         if (offset) return; // or don't
         for (int j = 0; j < BLOCKSIZE; j++)
                 ADD_VECTORS(accel_sum, theseRows[j]);
+*/
+        // NOTE: This `offset` is *very* different from the one in `computeVel`
+        for (int offset = WARPSIZE/2; offset; offset >>= 1) {
+                accel_sum[0] += __shfl_down_sync(0xFFFFFFFF, accel_sum[0], offset);
+                accel_sum[1] += __shfl_down_sync(0xFFFFFFFF, accel_sum[1], offset);
+                accel_sum[2] += __shfl_down_sync(0xFFFFFFFF, accel_sum[2], offset);
+        }
 }
 
 //compute: Updates the positions and locations of the objects in the system based on gravity.
