@@ -24,8 +24,9 @@ Parallelised by Samhain Ackerman and Henry Leap
 #define NUMENTITIES (NUMPLANETS+NUMASTEROIDS+1)
 
 //Cuda variables
+#define BLOCKSIZE 256
 #define WARPSIZE 32
-#define BLOCKSIZE WARPSIZE
-#define GRIDSIZE NUMENTITIES
+#define IS_PER_BLOCK (BLOCKSIZE / WARPSIZE)
+#define GRIDSIZE (NUMENTITIES / IS_PER_BLOCK + 1)
 
 #endif

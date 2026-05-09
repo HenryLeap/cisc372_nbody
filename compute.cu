@@ -38,23 +38,30 @@ __global__ void computeVel(
         double * d_mass
 ){
 	int j,k;
-	int i = blockIdx.x;
-	int incr = BLOCKSIZE, offset = threadIdx.x;
-	vector3 accel_sum={0,0,0};
+	int i = threadIdx.y + blockDim.y * blockIdx.x;
+	int offset = threadIdx.x;
+
+	vector3 thisPos;
+	COPY_VECTOR(thisPos, d_hPos[i]);
+
 	//if(i>=NUMENTITIES) goto pos;
 
 
-	for (j = offset; j < NUMENTITIES; j += incr){
+	vector3 accel_sum={0,0,0};
+	for (j = offset; j < NUMENTITIES; j += WARPSIZE){
 	        vector3 accel;
 		if (i==j) {
 			FILL_VECTOR(accel,0,0,0);
 		}
 		else{
 			vector3 distance;
-			for (k=0;k<3;k++) distance[k]=d_hPos[i][k]-d_hPos[j][k];
-			double magnitude_sq=distance[0]*distance[0]+distance[1]*distance[1]+distance[2]*distance[2];
-			double magnitude=sqrt(magnitude_sq);
-			double accelmag=-1*GRAV_CONSTANT*d_mass[j]/magnitude_sq;
+			for (k=0;k<3;k++) distance[k] = thisPos[k] - d_hPos[j][k];
+			double magnitude_sq = (
+			        distance[0] * distance[0] +
+			        distance[1] * distance[1] +
+			        distance[2] * distance[2]);
+			double magnitude = sqrt(magnitude_sq);
+			double accelmag = -1*GRAV_CONSTANT*d_mass[j]/magnitude_sq;
 			FILL_VECTOR(accel,accelmag*distance[0]/magnitude,accelmag*distance[1]/magnitude,accelmag*distance[2]/magnitude);
 		}
 		// for (k=0;k<3;k++) accel_sum[k]+=accel[k];
@@ -113,7 +120,8 @@ __global__ void updatePos(vector3 * d_hVel, vector3 * d_hPos) {
 }
 
 void compute(vector3 * d_hVel, vector3 * d_hPos, double * d_mass) {
-        computeVel<<<GRIDSIZE,BLOCKSIZE>>>(d_hVel, d_hPos, d_mass);
+        dim3 threadsPerBlock(WARPSIZE, IS_PER_BLOCK);
+        computeVel<<<GRIDSIZE,threadsPerBlock>>>(d_hVel, d_hPos, d_mass);
         cudaDeviceSynchronize();
-        updatePos<<<GRIDSIZE,BLOCKSIZE>>>(d_hVel, d_hPos);
+        updatePos<<<GRIDSIZE / WARPSIZE,BLOCKSIZE>>>(d_hVel, d_hPos);
 }
