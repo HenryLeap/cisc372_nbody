@@ -8,16 +8,16 @@ Parallelised by Samhain Ackerman and Henry Leap
 #include "config.h"
 
 __device__ void reduce(vector3 accel_sum) {
-	int inBlockI = threadIdx.x;
-	int iSection = threadIdx.y;
-	__shared__ vector3 theseRows[IS_PER_BLOCK][THREADS_PER_I];
-        COPY_VECTOR(theseRows[inBlockI][iSection], accel_sum);
+	// int inBlockI = threadIdx.x;
+	int offset = threadIdx.x;
+	__shared__ vector3 theseRows[BLOCKSIZE];
+        COPY_VECTOR(theseRows[offset], accel_sum);
         FILL_VECTOR(accel_sum, 0,0,0);
         __syncthreads();
         // ignore that we only need to do this for iSection == 0
-        if (iSection) return; // or don't
-        for (int j = 0; j < THREADS_PER_I; j++)
-                ADD_VECTORS(accel_sum, theseRows[inBlockI][j]);
+        if (offset) return; // or don't
+        for (int j = 0; j < BLOCKSIZE; j++)
+                ADD_VECTORS(accel_sum, theseRows[j]);
 }
 
 //compute: Updates the positions and locations of the objects in the system based on gravity.
@@ -30,10 +30,9 @@ __global__ void computeVel(
         double * d_mass
 ){
 	int j,k;
-	int i = blockIdx.x*blockDim.x+threadIdx.x;
-	int incr = blockDim.y, offset = threadIdx.y;
+	int i = blockIdx.x;
+	int incr = BLOCKSIZE, offset = threadIdx.x;
 	vector3 accel_sum={0,0,0};
-	if(i>=NUMENTITIES) goto reduce;
 	//if(i>=NUMENTITIES) goto pos;
 
 
@@ -50,14 +49,16 @@ __global__ void computeVel(
 			double accelmag=-1*GRAV_CONSTANT*d_mass[j]/magnitude_sq;
 			FILL_VECTOR(accel,accelmag*distance[0]/magnitude,accelmag*distance[1]/magnitude,accelmag*distance[2]/magnitude);
 		}
-		for (k=0;k<3;k++) accel_sum[k]+=accel[k];
+		// for (k=0;k<3;k++) accel_sum[k]+=accel[k];
+		ADD_VECTORS(accel_sum, accel);
 	}
 
-	reduce:
+	// reduce:
 
 	reduce(accel_sum);
 
-	if (i >= NUMENTITIES || offset) return;
+	// if (i >= NUMENTITIES || offset) return;
+	if (offset) return;
 	// __shared__ vector3 theseRows; // would be nice to declare down here
 	// COPY_VECTOR(theseRows[blockIdx.x][offset], accel_sum);
 	// for (int l = SAME_I_THREADS >> 1; l; l >>= 1) {
@@ -87,23 +88,24 @@ __global__ void computeVel(
 	//pos:
 	//__syncthreads();
 	//if(i >= NUMENTITIES || offset != 0) return;
-	for (k=0;k<3;k++)
-		d_hVel[i][k]+=accel_sum[k]*INTERVAL;
+	// for (k=0;k<3;k++)
+	//	d_hVel[i][k]+=accel_sum[k]*INTERVAL;
+	ADD_VECTORS(d_hVel[i], INTERVAL * accel_sum);
 
 }
 
 __global__ void updatePos(vector3 * d_hVel, vector3 * d_hPos) {
-	int k, i = blockIdx.x*blockDim.x+threadIdx.x;
+	int i = blockIdx.x*blockDim.x+threadIdx.x;
 
 	if (i >= NUMENTITIES) return;
 
-	for (k=0;k<3;k++)
-		d_hPos[i][k]+=d_hVel[i][k]*INTERVAL;
+	// for (k=0;k<3;k++)
+	//	d_hPos[i][k]+=d_hVel[i][k]*INTERVAL;
+	ADD_VECTORS(d_hPos[i], INTERVAL * d_hVel[i]);
 }
 
 void compute(vector3 * d_hVel, vector3 * d_hPos, double * d_mass) {
-	dim3 threadsPerBlock(IS_PER_BLOCK, THREADS_PER_I);
-        computeVel<<<GRIDSIZE,threadsPerBlock>>>(d_hVel, d_hPos, d_mass);
+        computeVel<<<GRIDSIZE,BLOCKSIZE>>>(d_hVel, d_hPos, d_mass);
         cudaDeviceSynchronize();
-        updatePos<<<GRIDSIZE,IS_PER_BLOCK>>>(d_hVel, d_hPos);
+        updatePos<<<GRIDSIZE,BLOCKSIZE>>>(d_hVel, d_hPos);
 }
