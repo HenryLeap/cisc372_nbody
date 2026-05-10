@@ -13,23 +13,21 @@ Parallelised by Samhain Ackerman and Henry Leap
 #include "debug.h"
 
 // represents the objects in the system.  Global variables
-vector3 *hVel, *d_hVel;
-vector3 *hPos, *d_hPos;
-double *mass, *d_mass;
+vector3 * hVel, *d_hVel;
+vector3 * hPos, *d_hPos;
+double * mass, *d_mass;
 
 //initHostMemory: Create storage for numObjects entities in our system
 //Parameters: numObjects: number of objects to allocate
 //Returns: None
 //Side Effects: Allocates memory in the hVel, hPos, and mass global variables
-void initHostMemory(int numObjects)
-{
+void initHostMemory(int numObjects) {
 	hVel = (vector3 *)malloc(sizeof(vector3) * numObjects);
 	hPos = (vector3 *)malloc(sizeof(vector3) * numObjects);
 	mass = (double *)malloc(sizeof(double) * numObjects);
 }
 
-void initDevMemory(int numObjects)
-{
+void initDevMemory(int numObjects) {
 	HANDLE_ERROR(cudaMalloc(&d_hVel, sizeof(vector3) * numObjects));
 	HANDLE_ERROR(cudaMalloc(&d_hPos, sizeof(vector3) * numObjects));
 	HANDLE_ERROR(cudaMalloc(&d_mass, sizeof(double) * numObjects));
@@ -40,15 +38,13 @@ void initDevMemory(int numObjects)
 //Parameters: None
 //Returns: None
 //Side Effects: Frees the memory allocated to global variables hVel, hPos, and mass.
-void freeHostMemory()
-{
+void freeHostMemory() {
 	free(hVel);
 	free(hPos);
 	free(mass);
 }
 
-void freeDevMemory()
-{
+void freeDevMemory() {
 	HANDLE_ERROR(cudaFree(d_hVel));
 	HANDLE_ERROR(cudaFree(d_hPos));
 	HANDLE_ERROR(cudaFree(d_mass));
@@ -78,7 +74,7 @@ void planetFill(){
 //Side Effects: Fills count entries in our system starting at index start (0 based)
 void randomFill(int start, int count)
 {
-	int i, j, c = start;
+	int i, j;
 	for (i = start; i < start + count; i++)
 	{
 		for (j = 0; j < 3; j++)
@@ -123,20 +119,21 @@ void cpyBack(int numObjects){
 int main(int argc, char **argv)
 {
 	clock_t t0=clock();
-	int t_now;
+
 	//srand(time(NULL));
 	srand(1234);
 	initHostMemory(NUMENTITIES);
 	planetFill();
 	initDevMemory(NUMENTITIES);
 	randomFill(NUMPLANETS + 1, NUMASTEROIDS);
+
 	cpyOver(NUMENTITIES);
 
 	//now we have a system.
 	#ifdef DEBUG
 	printSystem(stdout);
 	#endif
-	for (t_now=0;t_now<DURATION;t_now+=INTERVAL){
+	for (int t_now = 0; t_now < DURATION; t_now += INTERVAL) {
                 compute(d_hVel, d_hPos, d_mass);
 		if (t_now % (100 * INTERVAL)) continue;
                 #ifdef DEBUG
