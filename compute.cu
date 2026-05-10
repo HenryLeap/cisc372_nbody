@@ -39,29 +39,45 @@ __global__ void computeVel(
 ){
 	int j,k;
 	int i = threadIdx.y + blockDim.y * blockIdx.x;
+	int sgnfThreadIdx = blockDim.x * threadIdx.y;
 	int offset = threadIdx.x;
+	int fullThreadIdx = offset + sgnfThreadIdx;
 
 	vector3 thisPos;
 	COPY_VECTOR(thisPos, d_hPos[i]);
 
 	//if(i>=NUMENTITIES) goto pos;
 
+	__shared__ vector3 pos[BLOCKSIZE];
+	__shared__ double mass[BLOCKSIZE];
+
 
 	vector3 accel_sum={0,0,0};
-	for (j = offset; j < NUMENTITIES; j += WARPSIZE){
+	for (j = offset; j < NUMENTITIES; j += WARPSIZE) {
+	        if (j % BLOCKSIZE == offset) {
+	                //__syncthreads();
+                	//if (j >= NUMENTITIES) continue;
+        	        COPY_VECTOR(pos[fullThreadIdx], d_hPos[sgnfThreadIdx + j]);
+        	        mass[fullThreadIdx] = d_mass[sgnfThreadIdx + j];
+        	}
+	        //if (j >= 2*NUMENTITIES)
+        	//if (j >= NUMENTITIES) break;
 	        vector3 accel;
 		if (i==j) {
 			FILL_VECTOR(accel,0,0,0);
 		}
 		else{
 			vector3 distance;
-			for (k=0;k<3;k++) distance[k] = thisPos[k] - d_hPos[j][k];
+			for (k=0;k<3;k++)
+			        // distance[k] = thisPos[k] - d_hPos[j][k];
+			        distance[k] = thisPos[k] - pos[j % BLOCKSIZE][k];
 			double magnitude_sq = (
 			        distance[0] * distance[0] +
 			        distance[1] * distance[1] +
 			        distance[2] * distance[2]);
 			double magnitude = sqrt(magnitude_sq);
-			double accelmag = -1*GRAV_CONSTANT*d_mass[j]/magnitude_sq;
+			// double accelmag = -1*GRAV_CONSTANT*d_mass[j]/magnitude_sq;
+			double accelmag = -1*GRAV_CONSTANT*mass[j % BLOCKSIZE]/magnitude_sq;
 			FILL_VECTOR(accel,accelmag*distance[0]/magnitude,accelmag*distance[1]/magnitude,accelmag*distance[2]/magnitude);
 		}
 		// for (k=0;k<3;k++) accel_sum[k]+=accel[k];
